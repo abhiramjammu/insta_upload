@@ -44,7 +44,7 @@ def create_rounded_mask(width, height, radius, output_path):
     img.save(output_path)
 
 def process_video_ffmpeg(input_path, output_path):
-    """Trims video, applies moving pastel background and 75% scale rounded corners (Clean Edition)."""
+    """Trims video, applies faster moving pastel background, rounded corners, and '3ditz' watermark."""
     bg_dir = os.path.join(os.path.dirname(output_path), "backgrounds")
     generate_backgrounds(bg_dir)
     
@@ -74,19 +74,25 @@ def process_video_ffmpeg(input_path, output_path):
     mask_path = os.path.join(os.path.dirname(output_path), "mask.png")
     create_rounded_mask(inner_w, inner_h, radius=60, output_path=mask_path)
     
+    # Path to font file on Windows
+    font_path = "C\\:/Windows/Fonts/arialbd.ttf"
+    
     filter_complex = (
-        # 1. Format video, scale to 75%, force RGBA so alphamerge works!
+        # 1. Format video, scale to 75%, force RGBA
         f"[0:v]trim=duration={trim_duration},setpts=PTS-STARTPTS,scale={inner_w}:{inner_h}:force_original_aspect_ratio=increase,crop={inner_w}:{inner_h},format=rgba[v_scaled];"
         
         # 2. Extract mask and merge for true rounded corners
         f"[2:v]format=rgba[mask];"
         f"[v_scaled][mask]alphamerge[fg_masked];"
         
-        # 3. Background Animation (Zoom in slowly)
-        f"[1:v]zoompan=z='zoom+0.001':d={int(trim_duration*30)}:s={canvas_w}x{canvas_h}[bg_anim];"
+        # 3. Background Animation (Faster zoom: +0.003)
+        f"[1:v]zoompan=z='zoom+0.003':d={int(trim_duration*30)}:s={canvas_w}x{canvas_h}[bg_anim];"
         
         # 4. Overlay main video perfectly centered
-        f"[bg_anim][fg_masked]overlay=(main_w-overlay_w)/2:(main_h-overlay_h)/2[outv];"
+        f"[bg_anim][fg_masked]overlay=(main_w-overlay_w)/2:(main_h-overlay_h)/2[base_out];"
+        
+        # 5. Add '3ditz' outline watermark at 50% opacity
+        f"[base_out]drawtext=fontfile='{font_path}':text='3ditz':fontcolor=black@0:bordercolor=white@0.5:borderw=8:fontsize=200:x=(w-tw)/2:y=(h-th)/2[outv];"
         
         f"[0:a]atrim=duration={trim_duration},asetpts=PTS-STARTPTS[outa]"
     )
