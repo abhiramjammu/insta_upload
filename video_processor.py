@@ -44,7 +44,7 @@ def create_rounded_mask(width, height, radius, output_path):
     img.save(output_path)
 
 def process_video_ffmpeg(input_path, output_path):
-    """Trims video, applies faster moving pastel background, rounded corners, and '3ditz' watermark."""
+    """Trims video, applies moving pastel background, rounded corners, and animated expanding '3ditz' watermark."""
     bg_dir = os.path.join(os.path.dirname(output_path), "backgrounds")
     generate_backgrounds(bg_dir)
     
@@ -77,6 +77,14 @@ def process_video_ffmpeg(input_path, output_path):
     # Path to font file on Windows
     font_path = "C\\:/Windows/Fonts/arialbd.ttf"
     
+    # Text Tracking Animation Logic
+    # Center letter is 'i'. '3' and 'd' go left, 't' and 'z' go right.
+    # Base spacing starts at 110px and expands by 160px over the duration of the video.
+    base_spacing = 110
+    expansion = 160
+    # The math expressions for X coordinates
+    spacing_expr = f"({base_spacing} + (t/{trim_duration})*{expansion})"
+    
     filter_complex = (
         # 1. Format video, scale to 75%, force RGBA
         f"[0:v]trim=duration={trim_duration},setpts=PTS-STARTPTS,scale={inner_w}:{inner_h}:force_original_aspect_ratio=increase,crop={inner_w}:{inner_h},format=rgba[v_scaled];"
@@ -85,14 +93,27 @@ def process_video_ffmpeg(input_path, output_path):
         f"[2:v]format=rgba[mask];"
         f"[v_scaled][mask]alphamerge[fg_masked];"
         
-        # 3. Background Animation (Faster zoom: +0.003)
+        # 3. Background Animation
         f"[1:v]zoompan=z='zoom+0.003':d={int(trim_duration*30)}:s={canvas_w}x{canvas_h}[bg_anim];"
         
         # 4. Overlay main video perfectly centered
         f"[bg_anim][fg_masked]overlay=(main_w-overlay_w)/2:(main_h-overlay_h)/2[base_out];"
         
-        # 5. Add '3ditz' outline watermark at 50% opacity
-        f"[base_out]drawtext=fontfile='{font_path}':text='3ditz':fontcolor=black@0:bordercolor=white@0.5:borderw=8:fontsize=200:x=(w-tw)/2:y=(h-th)/2[outv];"
+        # 5. Draw animated text outline for '3ditz' letter by letter
+        # 'i' (Center)
+        f"[base_out]drawtext=fontfile='{font_path}':text='i':fontcolor=black@0:bordercolor=white@0.5:borderw=8:fontsize=200:x='(w-tw)/2':y='(h-th)/2'[t_i];"
+        
+        # 'd' (1 left of center)
+        f"[t_i]drawtext=fontfile='{font_path}':text='d':fontcolor=black@0:bordercolor=white@0.5:borderw=8:fontsize=200:x='(w-tw)/2 - {spacing_expr}':y='(h-th)/2'[t_d];"
+        
+        # 't' (1 right of center)
+        f"[t_d]drawtext=fontfile='{font_path}':text='t':fontcolor=black@0:bordercolor=white@0.5:borderw=8:fontsize=200:x='(w-tw)/2 + {spacing_expr}':y='(h-th)/2'[t_t];"
+        
+        # '3' (2 left of center)
+        f"[t_t]drawtext=fontfile='{font_path}':text='3':fontcolor=black@0:bordercolor=white@0.5:borderw=8:fontsize=200:x='(w-tw)/2 - 2*{spacing_expr}':y='(h-th)/2'[t_3];"
+        
+        # 'z' (2 right of center)
+        f"[t_3]drawtext=fontfile='{font_path}':text='z':fontcolor=black@0:bordercolor=white@0.5:borderw=8:fontsize=200:x='(w-tw)/2 + 2*{spacing_expr}':y='(h-th)/2'[outv];"
         
         f"[0:a]atrim=duration={trim_duration},asetpts=PTS-STARTPTS[outa]"
     )
