@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Instagram Auto Uploader Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        glass: 'rgba(17, 25, 40, 0.75)',
+                        'glass-border': 'rgba(255, 255, 255, 0.125)',
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            background: linear-gradient(135deg, #0f0c29, #302b63, #24243e);
+            background-attachment: fixed;
+            color: #fff;
+            font-family: 'Inter', sans-serif;
+            min-height: 100vh;
+        }
+        .glass-panel {
+            background-color: rgba(17, 25, 40, 0.6);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 1rem;
+        }
+        .video-card {
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+        .video-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 25px -5px rgba(124, 58, 237, 0.3); /* Purple glow */
+        }
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: rgba(0,0,0,0.2); 
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(124, 58, 237, 0.5); 
+            border-radius: 10px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(124, 58, 237, 0.8); 
+        }
+    </style>
+</head>
+<body class="antialiased p-4 md:p-8">
+
+    <div class="max-w-7xl mx-auto">
+        <!-- Header -->
+        <header class="mb-10 flex justify-between items-center glass-panel p-6">
+            <div>
+                <h1 class="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-purple-400 to-blue-500">
+                    InstaFlow Dashboard
+                </h1>
+                <p class="text-gray-400 mt-1 text-sm">Automated pipeline for Premiere Pro to Instagram</p>
+            </div>
+            
+            <!-- Drag and drop zone -->
+            <div id="dropzone" class="border-2 border-dashed border-purple-500/50 rounded-xl p-4 text-center cursor-pointer hover:bg-purple-500/10 transition-colors">
+                <p class="text-sm text-purple-300 font-medium">Drag & Drop or Click to Upload</p>
+                <input type="file" id="fileInput" class="hidden" accept="video/mp4,video/quicktime">
+            </div>
+        </header>
+
+        <!-- Tabs -->
+        <div class="flex space-x-4 mb-6 border-b border-white/10 pb-2">
+            <button onclick="switchTab('pending')" id="tab-pending" class="px-4 py-2 text-purple-400 font-semibold border-b-2 border-purple-500">Recent Exports (Cooling)</button>
+            <button onclick="switchTab('staging')" id="tab-staging" class="px-4 py-2 text-gray-400 font-medium hover:text-white transition">Upcoming Reels</button>
+            <button onclick="switchTab('archive')" id="tab-archive" class="px-4 py-2 text-gray-400 font-medium hover:text-white transition">Archive</button>
+        </div>
+
+        <!-- Video Grid -->
+        <div id="video-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            <!-- Loading state -->
+            <div class="col-span-full text-center text-gray-400 py-10">
+                <svg class="animate-spin h-8 w-8 mx-auto mb-4 text-purple-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                Loading your content...
+            </div>
+        </div>
+    </div>
+
+    <!-- Video Player Modal -->
+    <div id="videoModal" class="fixed inset-0 z-50 hidden bg-black/90 flex items-center justify-center p-4 backdrop-blur-sm">
+        <div class="glass-panel p-4 max-w-4xl w-full relative">
+            <button onclick="closeModal()" class="absolute -top-4 -right-4 bg-red-500 text-white rounded-full p-2 hover:bg-red-600 shadow-lg">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+            </button>
+            <video id="modalVideoPlayer" controls class="w-full rounded-lg max-h-[80vh] bg-black">
+                <source src="" type="video/mp4">
+            </video>
+        </div>
+    </div>
+
+    <script src="/static/js/main.js"></script>
+</body>
+</html>
