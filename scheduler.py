@@ -91,7 +91,7 @@ def scan_premiere_folder():
                 if age_hours >= 12:
                     new_path = os.path.join(ARCHIVE_FOLDER, filename)
                     try:
-                        shutil.move(filepath, new_path)
+                        shutil.copy2(filepath, new_path)
                         video.current_path = new_path
                         video.status = VideoStatus.STAGING
                         video.staged_at = datetime.now()
@@ -169,6 +169,11 @@ def process_uploads():
             # Clean up the trimmed file
             if os.path.exists(output_trimmed):
                 os.remove(output_trimmed)
+                
+            # Delete the original file from the Premiere Pro folder now that it's uploaded
+            if video.original_path and os.path.exists(video.original_path):
+                os.remove(video.original_path)
+                print(f"Deleted original file from Premiere Pro: {video.original_path}")
                 
         except Exception as e:
             print(f"Upload failed for {video.filename}: {e}")
