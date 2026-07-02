@@ -29,6 +29,10 @@ def scan_premiere_folder():
             stat = os.stat(filepath)
             file_time = datetime.fromtimestamp(stat.st_mtime)
             
+            # Only process videos created after June 1st, 2026
+            if file_time < datetime(2026, 6, 1):
+                continue
+            
             video = session.query(Video).filter_by(filename=filename).first()
             if not video:
                 video = Video(
