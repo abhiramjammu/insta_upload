@@ -44,7 +44,7 @@ def create_rounded_mask(width, height, radius, output_path):
     img.save(output_path)
 
 def process_video_ffmpeg(input_path, output_path):
-    """Trims video, applies moving pastel background, 75% scale rounded corners, drop shadow, and a progress bar!"""
+    """Trims video, applies moving pastel background and 75% scale rounded corners (Clean Edition)."""
     bg_dir = os.path.join(os.path.dirname(output_path), "backgrounds")
     generate_backgrounds(bg_dir)
     
@@ -75,29 +75,18 @@ def process_video_ffmpeg(input_path, output_path):
     create_rounded_mask(inner_w, inner_h, radius=60, output_path=mask_path)
     
     filter_complex = (
-        # 1. Format video and scale to 75%
-        f"[0:v]trim=duration={trim_duration},setpts=PTS-STARTPTS,format=rgba[v_trim];"
-        f"[v_trim]scale={inner_w}:{inner_h}:force_original_aspect_ratio=increase,crop={inner_w}:{inner_h}[v_scaled];"
+        # 1. Format video, scale to 75%, force RGBA so alphamerge works!
+        f"[0:v]trim=duration={trim_duration},setpts=PTS-STARTPTS,scale={inner_w}:{inner_h}:force_original_aspect_ratio=increase,crop={inner_w}:{inner_h},format=rgba[v_scaled];"
         
-        # 2. Extract mask and merge for rounded corners
-        f"[2:v]format=rgba,alphaextract[mask];"
+        # 2. Extract mask and merge for true rounded corners
+        f"[2:v]format=rgba[mask];"
         f"[v_scaled][mask]alphamerge[fg_masked];"
         
-        # 3. Create a drop shadow from the rounded video
-        f"[fg_masked]split[fg_shadow][fg_main];"
-        f"[fg_shadow]colorchannelmixer=rr=0:rg=0:rb=0:ra=0:gr=0:gg=0:gb=0:ga=0:br=0:bg=0:bb=0:ba=0:aa=0.5,scale={inner_w+20}:{inner_h+20},boxblur=20[shadow];"
-        
-        # 4. Background Animation (Zoom in slowly)
+        # 3. Background Animation (Zoom in slowly)
         f"[1:v]zoompan=z='zoom+0.001':d={int(trim_duration*30)}:s={canvas_w}x{canvas_h}[bg_anim];"
         
-        # 5. Overlay shadow, then main video
-        f"[bg_anim][shadow]overlay=(main_w-overlay_w)/2:(main_h-overlay_h)/2+20[bg_with_shadow];"
-        f"[bg_with_shadow][fg_main]overlay=(main_w-overlay_w)/2:(main_h-overlay_h)/2[base_out];"
-        
-        # 6. Create attention-grabbing Progress Bar at the bottom of the inner video
-        f"color=c=white@0.9:s={inner_w}x12:d={trim_duration}[prog_src];"
-        f"[prog_src]scale=w='max(1, (t/{trim_duration})*{inner_w})':h=12:eval=frame[prog_bar];"
-        f"[base_out][prog_bar]overlay=(main_w-{inner_w})/2:(main_h+{inner_h})/2-40[outv];"
+        # 4. Overlay main video perfectly centered
+        f"[bg_anim][fg_masked]overlay=(main_w-overlay_w)/2:(main_h-overlay_h)/2[outv];"
         
         f"[0:a]atrim=duration={trim_duration},asetpts=PTS-STARTPTS[outa]"
     )
@@ -105,7 +94,7 @@ def process_video_ffmpeg(input_path, output_path):
     cmd = [
         'ffmpeg', '-y', 
         '-i', input_path, 
-        '-i', selected_bg,
+        '-loop', '1', '-i', selected_bg,
         '-i', mask_path,
         '-filter_complex', filter_complex,
         '-map', '[outv]', 
