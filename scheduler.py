@@ -1,9 +1,14 @@
 import os
 import shutil
-from datetime import datetime
+from datetime import datetime, timedelta
+import pytz
 from dotenv import load_dotenv
 from database import SessionLocal, Video, VideoStatus, init_db
 from instagrapi import Client
+from sqlalchemy import func
+
+from video_processor import process_video_ffmpeg
+from ai_captioner import generate_blog_caption
 
 load_dotenv()
 
@@ -13,6 +18,41 @@ ARCHIVE_FOLDER = os.getenv("ARCHIVE_FOLDER", "D:/adobe upload after three days")
 # Ensure folders exist
 os.makedirs(PREMIERE_FOLDER, exist_ok=True)
 os.makedirs(ARCHIVE_FOLDER, exist_ok=True)
+
+IST = pytz.timezone('Asia/Kolkata')
+
+def get_ist_now():
+    return datetime.now(pytz.utc).astimezone(IST)
+
+def can_upload_now(session):
+    """Checks if we are allowed to upload based on time, daily limits, and gaps."""
+    now_ist = get_ist_now()
+    
+    # 1. Night Blackout (12:00 AM to 6:00 AM)
+    if 0 <= now_ist.hour < 6:
+        print(f"[{now_ist.strftime('%H:%M')}] Night blackout active. Skipping uploads.")
+        return False
+        
+    # 2. Daily Limit (Max 2 per day)
+    today_start = now_ist.replace(hour=0, minute=0, second=0, microsecond=0).astimezone(pytz.utc).replace(tzinfo=None)
+    uploads_today = session.query(func.count(Video.id)).filter(
+        Video.status == VideoStatus.UPLOADED,
+        Video.uploaded_at >= today_start
+    ).scalar()
+    
+    if uploads_today >= 2:
+        print(f"[{now_ist.strftime('%H:%M')}] Daily limit of 2 reached. Skipping uploads.")
+        return False
+        
+    # 3. Minimum Gap (12 hours)
+    last_upload = session.query(Video).filter(Video.status == VideoStatus.UPLOADED).order_by(Video.uploaded_at.desc()).first()
+    if last_upload and last_upload.uploaded_at:
+        hours_since = (datetime.now() - last_upload.uploaded_at).total_seconds() / 3600
+        if hours_since < 12:
+            print(f"[{now_ist.strftime('%H:%M')}] Minimum gap not met ({hours_since:.1f}h < 12h). Skipping uploads.")
+            return False
+            
+    return True
 
 def scan_premiere_folder():
     """Scans the premiere folder for new videos and adds them to DB, or moves them to staging if >12h"""
@@ -70,9 +110,13 @@ def process_uploads():
         if not videos:
             return
 
-        # Check if any video is ready before logging in
+        # Check if any video is ready before checking limits
         ready_videos = [v for v in videos if (datetime.now() - v.exported_at).total_seconds() / (3600 * 24) >= 3]
         if not ready_videos:
+            return
+
+        # Enforce all timing constraints (IST Timezone, 12h Gap, Max 2/day, Night Blackout)
+        if not can_upload_now(session):
             return
 
         username = os.getenv("IG_USERNAME")
@@ -90,21 +134,46 @@ def process_uploads():
             print(f"Instagram Login Failed: {e}")
             return
 
-        for video in ready_videos:
-            print(f"Uploading {video.filename} as a Reel...")
-            try:
-                cl.clip_upload(
-                    video.current_path,
-                    video.caption if video.caption else "Auto-uploaded via InstaFlow"
-                )
-                video.status = VideoStatus.UPLOADED
-                video.uploaded_at = datetime.now()
-                session.commit()
-                print(f"Successfully uploaded {video.filename}.")
-            except Exception as e:
-                print(f"Upload failed for {video.filename}: {e}")
-                video.status = VideoStatus.FAILED
-                session.commit()
+        # Only process ONE video per run to respect the 12-hour gap rule on the next cycle
+        video = ready_videos[0]
+        
+        print(f"Processing {video.filename} for upload...")
+        
+        # 1. Video Editing (Trimming, Padding, Rounded Edges)
+        output_trimmed = os.path.join(ARCHIVE_FOLDER, f"trimmed_{video.filename}")
+        try:
+            process_video_ffmpeg(video.current_path, output_trimmed)
+        except Exception as e:
+            print(f"FFmpeg processing failed: {e}")
+            return
+
+        # 2. AI Captioning
+        try:
+            caption = generate_blog_caption(output_trimmed)
+        except Exception as e:
+            print(f"Caption generation failed: {e}")
+            caption = "Auto-uploaded via InstaFlow #insta #reels #video #edit #viral"
+
+        print(f"Uploading {video.filename} as a Reel...")
+        try:
+            cl.clip_upload(
+                output_trimmed,
+                caption
+            )
+            video.status = VideoStatus.UPLOADED
+            video.uploaded_at = datetime.now()
+            video.caption = caption
+            session.commit()
+            print(f"Successfully uploaded {video.filename}.")
+            
+            # Clean up the trimmed file
+            if os.path.exists(output_trimmed):
+                os.remove(output_trimmed)
+                
+        except Exception as e:
+            print(f"Upload failed for {video.filename}: {e}")
+            video.status = VideoStatus.FAILED
+            session.commit()
     finally:
         session.close()
 
