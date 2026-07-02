@@ -1,112 +1,619 @@
 <!DOCTYPE html>
-<html lang="en" class="dark">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Instagram Auto Uploader Dashboard</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-        tailwind.config = {
-            darkMode: 'class',
-            theme: {
-                extend: {
-                    colors: {
-                        glass: 'rgba(17, 25, 40, 0.75)',
-                        'glass-border': 'rgba(255, 255, 255, 0.125)',
-                    }
-                }
-            }
-        }
-    </script>
+    <title>InstaFlow — Your Automated Reel Pipeline</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700;800&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
     <style>
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        :root {
+            --bg: #F7F4F0;
+            --bg2: #EFEAE4;
+            --surface: rgba(255,255,255,0.82);
+            --surface-border: rgba(255,255,255,0.6);
+            --text-primary: #1A1522;
+            --text-secondary: #6B6580;
+            --text-muted: #A09BB0;
+            --accent: #8B62FF;
+            --accent2: #FF62B2;
+            --accent3: #62C4FF;
+            --green: #3DD68C;
+            --orange: #FF9062;
+            --red: #FF6262;
+            --shadow-sm: 0 2px 8px rgba(80,60,120,0.06);
+            --shadow-md: 0 8px 32px rgba(80,60,120,0.12);
+            --shadow-lg: 0 20px 60px rgba(80,60,120,0.18);
+            --radius: 20px;
+            --radius-sm: 12px;
+        }
+
+        html { scroll-behavior: smooth; }
+
         body {
-            background: linear-gradient(135deg, #0f0c29, #302b63, #24243e);
-            background-attachment: fixed;
-            color: #fff;
             font-family: 'Inter', sans-serif;
+            background-color: var(--bg);
+            color: var(--text-primary);
             min-height: 100vh;
+            overflow-x: hidden;
         }
-        .glass-panel {
-            background-color: rgba(17, 25, 40, 0.6);
+
+        /* ---- ANIMATED GRADIENT ORBS ---- */
+        .bg-orbs {
+            position: fixed;
+            inset: 0;
+            z-index: 0;
+            pointer-events: none;
+            overflow: hidden;
+        }
+        .orb {
+            position: absolute;
+            border-radius: 50%;
+            filter: blur(80px);
+            opacity: 0.35;
+            animation: float 18s ease-in-out infinite;
+        }
+        .orb-1 { width: 700px; height: 700px; background: radial-gradient(circle, #C9B8FF, #F4CFFF); top: -200px; left: -200px; animation-duration: 20s; }
+        .orb-2 { width: 500px; height: 500px; background: radial-gradient(circle, #FFCFE0, #FFE7B0); bottom: -100px; right: -100px; animation-duration: 15s; animation-delay: -5s; }
+        .orb-3 { width: 400px; height: 400px; background: radial-gradient(circle, #B0E8FF, #C6F3E8); top: 40%; left: 55%; animation-duration: 22s; animation-delay: -10s; }
+
+        @keyframes float {
+            0%, 100% { transform: translate(0, 0) scale(1); }
+            33% { transform: translate(40px, -40px) scale(1.05); }
+            66% { transform: translate(-30px, 30px) scale(0.95); }
+        }
+
+        /* ---- LAYOUT ---- */
+        .page-wrap { position: relative; z-index: 1; max-width: 1440px; margin: 0 auto; padding: 0 32px 80px; }
+
+        /* ---- HEADER ---- */
+        header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 28px 0 36px;
+        }
+        .logo-area { display: flex; align-items: center; gap: 14px; }
+        .logo-icon {
+            width: 48px; height: 48px;
+            background: linear-gradient(135deg, var(--accent), var(--accent2));
+            border-radius: 14px;
+            display: flex; align-items: center; justify-content: center;
+            box-shadow: 0 8px 24px rgba(139,98,255,0.35);
+        }
+        .logo-icon svg { width: 26px; height: 26px; color: white; }
+        .logo-text h1 { font-family: 'Sora', sans-serif; font-size: 22px; font-weight: 700; color: var(--text-primary); letter-spacing: -0.5px; }
+        .logo-text p { font-size: 12px; color: var(--text-muted); margin-top: 1px; }
+
+        .header-right { display: flex; align-items: center; gap: 16px; }
+
+        .status-pill {
+            display: flex; align-items: center; gap: 8px;
+            background: var(--surface);
+            border: 1px solid var(--surface-border);
+            padding: 8px 16px;
+            border-radius: 100px;
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--text-secondary);
             backdrop-filter: blur(16px);
-            -webkit-backdrop-filter: blur(16px);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            border-radius: 1rem;
+            box-shadow: var(--shadow-sm);
         }
-        .video-card {
+        .status-dot {
+            width: 8px; height: 8px; border-radius: 50%;
+            background: var(--green);
+            box-shadow: 0 0 0 3px rgba(61, 214, 140, 0.25);
+            animation: pulse-dot 2s infinite;
+        }
+        @keyframes pulse-dot { 0%, 100% { box-shadow: 0 0 0 3px rgba(61,214,140,0.25); } 50% { box-shadow: 0 0 0 6px rgba(61,214,140,0.1); } }
+
+        .upload-btn {
+            display: flex; align-items: center; gap: 8px;
+            background: linear-gradient(135deg, var(--accent), #6B3FCC);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 100px;
+            font-size: 13px;
+            font-weight: 600;
+            font-family: 'Inter', sans-serif;
+            cursor: pointer;
+            box-shadow: 0 4px 20px rgba(139,98,255,0.4);
+            transition: all 0.2s ease;
+        }
+        .upload-btn:hover { transform: translateY(-2px); box-shadow: 0 8px 28px rgba(139,98,255,0.5); }
+        .upload-btn svg { width: 16px; height: 16px; }
+
+        /* ---- STATS ROW ---- */
+        .stats-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 36px; }
+        .stat-card {
+            background: var(--surface);
+            border: 1px solid var(--surface-border);
+            backdrop-filter: blur(20px);
+            border-radius: var(--radius);
+            padding: 24px;
+            box-shadow: var(--shadow-sm);
             transition: transform 0.2s ease, box-shadow 0.2s ease;
         }
-        .video-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 10px 25px -5px rgba(124, 58, 237, 0.3); /* Purple glow */
+        .stat-card:hover { transform: translateY(-3px); box-shadow: var(--shadow-md); }
+        .stat-label { font-size: 12px; font-weight: 500; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 10px; }
+        .stat-value { font-family: 'Sora', sans-serif; font-size: 36px; font-weight: 800; color: var(--text-primary); line-height: 1; }
+        .stat-icon {
+            width: 40px; height: 40px; border-radius: 10px;
+            display: flex; align-items: center; justify-content: center;
+            margin-bottom: 16px;
         }
-        /* Custom scrollbar */
-        ::-webkit-scrollbar {
-            width: 8px;
+        .stat-icon svg { width: 20px; height: 20px; }
+        .stat-icon.purple { background: rgba(139,98,255,0.12); color: var(--accent); }
+        .stat-icon.pink { background: rgba(255,98,178,0.12); color: var(--accent2); }
+        .stat-icon.blue { background: rgba(98,196,255,0.12); color: var(--accent3); }
+        .stat-icon.green { background: rgba(61,214,140,0.12); color: var(--green); }
+
+        /* ---- MAIN CONTENT GRID ---- */
+        .content-grid { display: grid; grid-template-columns: 1fr 340px; gap: 24px; align-items: start; }
+
+        /* ---- TABS & PANEL ---- */
+        .main-panel {
+            background: var(--surface);
+            border: 1px solid var(--surface-border);
+            backdrop-filter: blur(20px);
+            border-radius: var(--radius);
+            box-shadow: var(--shadow-sm);
+            overflow: hidden;
         }
-        ::-webkit-scrollbar-track {
-            background: rgba(0,0,0,0.2); 
+        .panel-header { padding: 24px 28px 0; }
+        .tabs { display: flex; gap: 4px; background: var(--bg2); padding: 4px; border-radius: 12px; }
+        .tab-btn {
+            flex: 1; padding: 10px 16px;
+            border: none; background: transparent;
+            font-family: 'Inter', sans-serif;
+            font-size: 13px; font-weight: 500;
+            color: var(--text-secondary);
+            border-radius: 9px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            white-space: nowrap;
         }
-        ::-webkit-scrollbar-thumb {
-            background: rgba(124, 58, 237, 0.5); 
+        .tab-btn.active {
+            background: white;
+            color: var(--text-primary);
+            font-weight: 600;
+            box-shadow: var(--shadow-sm);
+        }
+        .tab-badge {
+            display: inline-flex; align-items: center; justify-content: center;
+            background: rgba(139,98,255,0.12);
+            color: var(--accent);
+            font-size: 11px; font-weight: 700;
+            width: 20px; height: 20px;
+            border-radius: 6px;
+            margin-left: 6px;
+        }
+
+        .panel-body { padding: 24px 28px; }
+
+        /* ---- VIDEO GRID ---- */
+        #video-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 16px; }
+
+        .video-card {
+            border-radius: var(--radius-sm);
+            overflow: hidden;
+            background: var(--bg);
+            border: 1.5px solid rgba(0,0,0,0.06);
+            transition: all 0.25s ease;
+            cursor: pointer;
+        }
+        .video-card:hover { transform: translateY(-4px); box-shadow: var(--shadow-md); border-color: rgba(139,98,255,0.2); }
+
+        .video-thumb {
+            width: 100%; aspect-ratio: 9/16;
+            background: linear-gradient(145deg, #EDE8FF, #FFE8F4);
+            position: relative;
+            overflow: hidden;
+            display: flex; align-items: center; justify-content: center;
+        }
+        .video-thumb-inner {
+            position: absolute; inset: 0;
+            display: flex; align-items: center; justify-content: center;
+        }
+        .play-btn-overlay {
+            width: 52px; height: 52px;
+            background: rgba(255,255,255,0.9);
+            backdrop-filter: blur(8px);
+            border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+            transition: all 0.2s ease;
+        }
+        .video-card:hover .play-btn-overlay { transform: scale(1.12); background: white; }
+        .play-btn-overlay svg { width: 22px; height: 22px; color: var(--accent); margin-left: 3px; }
+
+        .video-card-body { padding: 14px; }
+        .video-filename { font-size: 13px; font-weight: 600; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-bottom: 8px; }
+        .status-badge {
+            display: inline-flex; align-items: center; gap: 5px;
+            font-size: 11px; font-weight: 600;
+            padding: 4px 10px;
+            border-radius: 100px;
+            margin-bottom: 12px;
+        }
+        .status-badge.cooling { background: rgba(98,196,255,0.12); color: #1FA3D4; }
+        .status-badge.staging { background: rgba(139,98,255,0.12); color: var(--accent); }
+        .status-badge.uploaded { background: rgba(61,214,140,0.12); color: #21A36A; }
+        .status-badge-dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+
+        .card-time { font-size: 11px; color: var(--text-muted); margin-bottom: 12px; }
+
+        .card-actions { display: flex; gap: 8px; }
+        .btn-post {
+            flex: 1; padding: 8px 0;
+            background: linear-gradient(135deg, var(--accent), #6B3FCC);
+            color: white; border: none; border-radius: 8px;
+            font-size: 12px; font-weight: 600; font-family: 'Inter', sans-serif;
+            cursor: pointer; transition: all 0.2s ease;
+        }
+        .btn-post:hover { opacity: 0.9; transform: translateY(-1px); }
+        .btn-delete {
+            padding: 8px 12px;
+            background: rgba(255,98,98,0.08);
+            color: var(--red); border: none; border-radius: 8px;
+            font-size: 12px; cursor: pointer; transition: all 0.2s ease;
+        }
+        .btn-delete:hover { background: rgba(255,98,98,0.15); }
+        .btn-delete svg { width: 14px; height: 14px; display: block; }
+
+        /* ---- SIDEBAR ---- */
+        .sidebar { display: flex; flex-direction: column; gap: 20px; }
+
+        .sidebar-card {
+            background: var(--surface);
+            border: 1px solid var(--surface-border);
+            backdrop-filter: blur(20px);
+            border-radius: var(--radius);
+            padding: 24px;
+            box-shadow: var(--shadow-sm);
+        }
+        .sidebar-card h3 { font-family: 'Sora', sans-serif; font-size: 15px; font-weight: 700; color: var(--text-primary); margin-bottom: 16px; }
+
+        /* Pipeline Visual */
+        .pipeline-step { display: flex; align-items: center; gap: 12px; padding: 12px 0; border-bottom: 1px solid rgba(0,0,0,0.05); }
+        .pipeline-step:last-child { border-bottom: none; padding-bottom: 0; }
+        .pipeline-step-icon {
+            width: 36px; height: 36px; flex-shrink: 0;
             border-radius: 10px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 16px;
         }
-        ::-webkit-scrollbar-thumb:hover {
-            background: rgba(124, 58, 237, 0.8); 
+        .pipeline-step-text .step-title { font-size: 13px; font-weight: 600; color: var(--text-primary); }
+        .pipeline-step-text .step-sub { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+
+        /* Upload Dropzone */
+        .dropzone {
+            border: 2px dashed rgba(139,98,255,0.3);
+            border-radius: var(--radius-sm);
+            padding: 28px 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            background: rgba(139,98,255,0.04);
         }
+        .dropzone:hover, .dropzone.over { border-color: var(--accent); background: rgba(139,98,255,0.08); }
+        .dropzone-icon { font-size: 32px; margin-bottom: 10px; }
+        .dropzone p { font-size: 13px; color: var(--text-secondary); font-weight: 500; }
+        .dropzone span { font-size: 11px; color: var(--text-muted); }
+        #fileInput { display: none; }
+
+        /* Schedule Widget */
+        .schedule-item { display: flex; align-items: center; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid rgba(0,0,0,0.05); }
+        .schedule-item:last-child { border-bottom: none; }
+        .schedule-item-left { display: flex; align-items: center; gap: 10px; }
+        .schedule-dot { width: 8px; height: 8px; border-radius: 50%; }
+        .schedule-info .s-title { font-size: 12px; font-weight: 600; color: var(--text-primary); }
+        .schedule-info .s-sub { font-size: 11px; color: var(--text-muted); }
+        .schedule-time { font-size: 11px; font-weight: 600; color: var(--text-secondary); }
+
+        /* Empty state */
+        .empty-state { padding: 60px 20px; text-align: center; }
+        .empty-icon { font-size: 48px; margin-bottom: 16px; }
+        .empty-state h4 { font-family: 'Sora', sans-serif; font-size: 16px; font-weight: 700; color: var(--text-primary); margin-bottom: 8px; }
+        .empty-state p { font-size: 13px; color: var(--text-muted); }
+
+        /* Loading Shimmer */
+        .shimmer { background: linear-gradient(90deg, #f0ebe3 25%, #e8e1d8 50%, #f0ebe3 75%); background-size: 200% 100%; animation: shimmer 1.5s infinite; border-radius: 8px; }
+        @keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+
+        /* ---- MODAL ---- */
+        #videoModal {
+            position: fixed; inset: 0; z-index: 9999;
+            background: rgba(26, 21, 34, 0.75);
+            backdrop-filter: blur(20px);
+            display: none; align-items: center; justify-content: center;
+            padding: 24px;
+            animation: fadeInModal 0.2s ease;
+        }
+        #videoModal.open { display: flex; }
+        @keyframes fadeInModal { from { opacity: 0; } to { opacity: 1; } }
+        .modal-content {
+            background: white;
+            border-radius: 24px;
+            padding: 8px;
+            max-width: 500px;
+            width: 100%;
+            box-shadow: var(--shadow-lg);
+            position: relative;
+            animation: scaleIn 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+        @keyframes scaleIn { from { transform: scale(0.9); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+        #modalVideoPlayer { width: 100%; border-radius: 18px; max-height: 80vh; background: #1A1522; display: block; }
+        .modal-close {
+            position: absolute; top: -14px; right: -14px;
+            width: 36px; height: 36px;
+            background: white;
+            border: none; border-radius: 50%;
+            cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+            box-shadow: var(--shadow-md);
+            color: var(--text-secondary);
+            transition: all 0.2s;
+        }
+        .modal-close:hover { color: var(--red); transform: scale(1.1); }
+        .modal-close svg { width: 18px; height: 18px; }
+
+        /* ---- SCROLLBAR ---- */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: rgba(139,98,255,0.2); border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: rgba(139,98,255,0.4); }
+
+        /* ---- RESPONSIVE ---- */
+        @media (max-width: 1100px) {
+            .content-grid { grid-template-columns: 1fr; }
+            .stats-row { grid-template-columns: repeat(2, 1fr); }
+            .sidebar { display: grid; grid-template-columns: repeat(2, 1fr); }
+        }
+        @media (max-width: 640px) {
+            .page-wrap { padding: 0 16px 60px; }
+            .stats-row { grid-template-columns: repeat(2, 1fr); gap: 12px; }
+            .stat-value { font-size: 28px; }
+            header { flex-direction: column; align-items: flex-start; gap: 16px; }
+            .sidebar { grid-template-columns: 1fr; }
+        }
+
+        /* Toast */
+        #toast {
+            position: fixed; bottom: 32px; right: 32px; z-index: 99999;
+            background: var(--text-primary); color: white;
+            padding: 14px 20px; border-radius: 14px;
+            font-size: 13px; font-weight: 500;
+            box-shadow: var(--shadow-lg);
+            transform: translateY(100px); opacity: 0;
+            transition: all 0.3s cubic-bezier(0.34,1.56,0.64,1);
+            pointer-events: none;
+        }
+        #toast.show { transform: translateY(0); opacity: 1; }
     </style>
 </head>
-<body class="antialiased p-4 md:p-8">
+<body>
 
-    <div class="max-w-7xl mx-auto">
-        <!-- Header -->
-        <header class="mb-10 flex justify-between items-center glass-panel p-6">
-            <div>
-                <h1 class="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-purple-400 to-blue-500">
-                    InstaFlow Dashboard
-                </h1>
-                <p class="text-gray-400 mt-1 text-sm">Automated pipeline for Premiere Pro to Instagram</p>
+<div class="bg-orbs">
+    <div class="orb orb-1"></div>
+    <div class="orb orb-2"></div>
+    <div class="orb orb-3"></div>
+</div>
+
+<div class="page-wrap">
+    <!-- HEADER -->
+    <header>
+        <div class="logo-area">
+            <div class="logo-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="20" rx="5"/><circle cx="12" cy="12" r="5"/><circle cx="17.5" cy="6.5" r="1.2" fill="white" stroke="none"/></svg>
             </div>
-            
-            <!-- Drag and drop zone -->
-            <div id="dropzone" class="border-2 border-dashed border-purple-500/50 rounded-xl p-4 text-center cursor-pointer hover:bg-purple-500/10 transition-colors">
-                <p class="text-sm text-purple-300 font-medium">Drag & Drop or Click to Upload</p>
-                <input type="file" id="fileInput" class="hidden" accept="video/mp4,video/quicktime">
-            </div>
-        </header>
-
-        <!-- Tabs -->
-        <div class="flex space-x-4 mb-6 border-b border-white/10 pb-2">
-            <button onclick="switchTab('pending')" id="tab-pending" class="px-4 py-2 text-purple-400 font-semibold border-b-2 border-purple-500">Recent Exports (Cooling)</button>
-            <button onclick="switchTab('staging')" id="tab-staging" class="px-4 py-2 text-gray-400 font-medium hover:text-white transition">Upcoming Reels</button>
-            <button onclick="switchTab('archive')" id="tab-archive" class="px-4 py-2 text-gray-400 font-medium hover:text-white transition">Archive</button>
-        </div>
-
-        <!-- Video Grid -->
-        <div id="video-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-            <!-- Loading state -->
-            <div class="col-span-full text-center text-gray-400 py-10">
-                <svg class="animate-spin h-8 w-8 mx-auto mb-4 text-purple-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
-                Loading your content...
+            <div class="logo-text">
+                <h1>InstaFlow</h1>
+                <p>Automated Reel Pipeline</p>
             </div>
         </div>
-    </div>
-
-    <!-- Video Player Modal -->
-    <div id="videoModal" class="fixed inset-0 z-50 hidden bg-black/90 flex items-center justify-center p-4 backdrop-blur-sm">
-        <div class="glass-panel p-4 max-w-4xl w-full relative">
-            <button onclick="closeModal()" class="absolute -top-4 -right-4 bg-red-500 text-white rounded-full p-2 hover:bg-red-600 shadow-lg">
-                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+        <div class="header-right">
+            <div class="status-pill">
+                <div class="status-dot"></div>
+                Automation Running
+            </div>
+            <button class="upload-btn" onclick="document.getElementById('fileInput').click()">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><polyline points="19 12 12 5 5 12"/></svg>
+                Upload Video
             </button>
-            <video id="modalVideoPlayer" controls class="w-full rounded-lg max-h-[80vh] bg-black">
-                <source src="" type="video/mp4">
-            </video>
+            <input type="file" id="fileInput" accept="video/mp4,video/quicktime">
+        </div>
+    </header>
+
+    <!-- STATS ROW -->
+    <div class="stats-row" id="stats-row">
+        <div class="stat-card">
+            <div class="stat-icon purple">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 15v4c0 1.1.9 2 2 2h14a2 2 0 0 0 2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+            </div>
+            <div class="stat-label">Cooling Down</div>
+            <div class="stat-value" id="stat-cooling">—</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon pink">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+            </div>
+            <div class="stat-label">Queued for Upload</div>
+            <div class="stat-value" id="stat-queued">—</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon green">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+            </div>
+            <div class="stat-label">Uploaded to Instagram</div>
+            <div class="stat-value" id="stat-uploaded">—</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon blue">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><polyline points="3 9 21 9"/><line x1="9" y1="21" x2="9" y2="9"/></svg>
+            </div>
+            <div class="stat-label">Total Tracked</div>
+            <div class="stat-value" id="stat-total">—</div>
         </div>
     </div>
 
-    <script src="/static/js/main.js"></script>
+    <!-- MAIN + SIDEBAR -->
+    <div class="content-grid">
+        <!-- Main Panel -->
+        <div class="main-panel">
+            <div class="panel-header">
+                <div class="tabs">
+                    <button class="tab-btn active" id="tab-pending" onclick="switchTab('pending')">
+                        Recent Exports <span class="tab-badge" id="badge-pending">0</span>
+                    </button>
+                    <button class="tab-btn" id="tab-staging" onclick="switchTab('staging')">
+                        Upcoming Reels <span class="tab-badge" id="badge-staging">0</span>
+                    </button>
+                    <button class="tab-btn" id="tab-archive" onclick="switchTab('archive')">
+                        Archive <span class="tab-badge" id="badge-archive">0</span>
+                    </button>
+                </div>
+            </div>
+            <div class="panel-body">
+                <div id="video-grid">
+                    <!-- Loading shimmer -->
+                    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:16px;" id="shimmer-grid">
+                        <div style="border-radius:12px;overflow:hidden;background:var(--bg);">
+                            <div class="shimmer" style="width:100%;aspect-ratio:9/16;"></div>
+                            <div style="padding:14px;"><div class="shimmer" style="height:14px;width:70%;margin-bottom:10px;"></div><div class="shimmer" style="height:10px;width:40%;"></div></div>
+                        </div>
+                        <div style="border-radius:12px;overflow:hidden;background:var(--bg);">
+                            <div class="shimmer" style="width:100%;aspect-ratio:9/16;"></div>
+                            <div style="padding:14px;"><div class="shimmer" style="height:14px;width:60%;margin-bottom:10px;"></div><div class="shimmer" style="height:10px;width:35%;"></div></div>
+                        </div>
+                        <div style="border-radius:12px;overflow:hidden;background:var(--bg);">
+                            <div class="shimmer" style="width:100%;aspect-ratio:9/16;"></div>
+                            <div style="padding:14px;"><div class="shimmer" style="height:14px;width:75%;margin-bottom:10px;"></div><div class="shimmer" style="height:10px;width:45%;"></div></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Sidebar -->
+        <div class="sidebar">
+            <!-- Pipeline Card -->
+            <div class="sidebar-card">
+                <h3>🚀 Your Pipeline</h3>
+                <div class="pipeline-step">
+                    <div class="pipeline-step-icon" style="background:rgba(98,196,255,0.12);font-size:18px;">🎬</div>
+                    <div class="pipeline-step-text">
+                        <div class="step-title">Export from Premiere</div>
+                        <div class="step-sub">Drop to D:\adobe premiere pro 2025</div>
+                    </div>
+                </div>
+                <div class="pipeline-step">
+                    <div class="pipeline-step-icon" style="background:rgba(255,144,98,0.12);font-size:18px;">⏳</div>
+                    <div class="pipeline-step-text">
+                        <div class="step-title">12 Hour Cooldown</div>
+                        <div class="step-sub">Copied to staging folder</div>
+                    </div>
+                </div>
+                <div class="pipeline-step">
+                    <div class="pipeline-step-icon" style="background:rgba(139,98,255,0.12);font-size:18px;">✨</div>
+                    <div class="pipeline-step-text">
+                        <div class="step-title">AI Trim & Edit</div>
+                        <div class="step-sub">Pastel bg • Rounded corners • Trimmed</div>
+                    </div>
+                </div>
+                <div class="pipeline-step">
+                    <div class="pipeline-step-icon" style="background:rgba(61,214,140,0.12);font-size:18px;">📸</div>
+                    <div class="pipeline-step-text">
+                        <div class="step-title">Auto Upload</div>
+                        <div class="step-sub">Posted after 3 days (max 2/day)</div>
+                    </div>
+                </div>
+                <div class="pipeline-step">
+                    <div class="pipeline-step-icon" style="background:rgba(255,98,98,0.12);font-size:18px;">🗑️</div>
+                    <div class="pipeline-step-text">
+                        <div class="step-title">Cleanup</div>
+                        <div class="step-sub">Deleted 7 days after upload</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Schedule Rules -->
+            <div class="sidebar-card">
+                <h3>🕐 Schedule Rules</h3>
+                <div class="schedule-item">
+                    <div class="schedule-item-left">
+                        <div class="schedule-dot" style="background:var(--green)"></div>
+                        <div class="schedule-info">
+                            <div class="s-title">Upload Window</div>
+                            <div class="s-sub">6:00 AM – 12:00 AM IST</div>
+                        </div>
+                    </div>
+                    <span class="schedule-time">Active</span>
+                </div>
+                <div class="schedule-item">
+                    <div class="schedule-item-left">
+                        <div class="schedule-dot" style="background:var(--red)"></div>
+                        <div class="schedule-info">
+                            <div class="s-title">Night Blackout</div>
+                            <div class="s-sub">12:00 AM – 6:00 AM IST</div>
+                        </div>
+                    </div>
+                    <span class="schedule-time">Blocked</span>
+                </div>
+                <div class="schedule-item">
+                    <div class="schedule-item-left">
+                        <div class="schedule-dot" style="background:var(--accent)"></div>
+                        <div class="schedule-info">
+                            <div class="s-title">Daily Limit</div>
+                            <div class="s-sub">Max 2 Reels per day</div>
+                        </div>
+                    </div>
+                    <span class="schedule-time">2/day</span>
+                </div>
+                <div class="schedule-item">
+                    <div class="schedule-item-left">
+                        <div class="schedule-dot" style="background:var(--orange)"></div>
+                        <div class="schedule-info">
+                            <div class="s-title">Minimum Gap</div>
+                            <div class="s-sub">Between uploads</div>
+                        </div>
+                    </div>
+                    <span class="schedule-time">12 hrs</span>
+                </div>
+            </div>
+
+            <!-- Drop Zone -->
+            <div class="sidebar-card">
+                <h3>📂 Quick Upload</h3>
+                <div class="dropzone" id="dropzone" onclick="document.getElementById('fileInput').click()">
+                    <div class="dropzone-icon">🎥</div>
+                    <p>Drop your video here</p>
+                    <span>MP4 or MOV — max 2GB</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- VIDEO MODAL -->
+<div id="videoModal">
+    <div class="modal-content">
+        <button class="modal-close" onclick="closeModal()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+        <video id="modalVideoPlayer" controls>
+            <source src="" type="video/mp4">
+        </video>
+    </div>
+</div>
+
+<!-- TOAST -->
+<div id="toast"></div>
+
+<script src="/static/js/main.js"></script>
 </body>
 </html>
