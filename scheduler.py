@@ -1,14 +1,14 @@
 import os
 import shutil
-import time
-from datetime import datetime, timedelta
+from datetime import datetime
 from dotenv import load_dotenv
 from database import SessionLocal, Video, VideoStatus, init_db
+from instagrapi import Client
 
 load_dotenv()
 
-PREMIERE_FOLDER = os.getenv("PREMIERE_FOLDER", "D:\\adobe premiere pro 2025")
-ARCHIVE_FOLDER = os.getenv("ARCHIVE_FOLDER", "D:\\adobe upload after three days")
+PREMIERE_FOLDER = os.getenv("PREMIERE_FOLDER", "D:/adobe premiere pro 2025")
+ARCHIVE_FOLDER = os.getenv("ARCHIVE_FOLDER", "D:/adobe upload after three days")
 
 # Ensure folders exist
 os.makedirs(PREMIERE_FOLDER, exist_ok=True)
@@ -26,14 +26,11 @@ def scan_premiere_folder():
                 continue
                 
             filepath = os.path.join(PREMIERE_FOLDER, filename)
-            # Get file creation/modification time
             stat = os.stat(filepath)
             file_time = datetime.fromtimestamp(stat.st_mtime)
             
-            # Check if exists in DB
             video = session.query(Video).filter_by(filename=filename).first()
             if not video:
-                # Add to DB
                 video = Video(
                     filename=filename,
                     original_path=filepath,
@@ -44,11 +41,10 @@ def scan_premiere_folder():
                 session.add(video)
                 session.commit()
             
-            # Check if > 12 hours old to move to staging
+            # Check if > 12 hours old
             if video.status == VideoStatus.PENDING_STAGING:
                 age_hours = (datetime.now() - video.exported_at).total_seconds() / 3600
                 if age_hours >= 12:
-                    # Move to staging
                     new_path = os.path.join(ARCHIVE_FOLDER, filename)
                     try:
                         shutil.move(filepath, new_path)
@@ -63,21 +59,48 @@ def scan_premiere_folder():
         session.close()
 
 def process_uploads():
-    """Checks staging folder for videos older than 3 days and uploads them"""
+    """Checks staging folder for videos older than 3 days and uploads them via instagrapi"""
     session = SessionLocal()
     try:
         videos = session.query(Video).filter_by(status=VideoStatus.STAGING).all()
-        for video in videos:
-            age_days = (datetime.now() - video.exported_at).total_seconds() / (3600 * 24)
-            if age_days >= 3:
-                print(f"Uploading {video.filename} to Instagram...")
-                # TODO: Call actual Instagram Graph API here
-                
-                # Mock success:
+        if not videos:
+            return
+
+        # Check if any video is ready before logging in
+        ready_videos = [v for v in videos if (datetime.now() - v.exported_at).total_seconds() / (3600 * 24) >= 3]
+        if not ready_videos:
+            return
+
+        username = os.getenv("IG_USERNAME")
+        password = os.getenv("IG_PASSWORD")
+        
+        if not username or not password:
+            print("Missing IG_USERNAME or IG_PASSWORD in .env. Skipping upload.")
+            return
+
+        print("Logging into Instagram...")
+        cl = Client()
+        try:
+            cl.login(username, password)
+        except Exception as e:
+            print(f"Instagram Login Failed: {e}")
+            return
+
+        for video in ready_videos:
+            print(f"Uploading {video.filename} as a Reel...")
+            try:
+                cl.clip_upload(
+                    video.current_path,
+                    video.caption if video.caption else "Auto-uploaded via InstaFlow"
+                )
                 video.status = VideoStatus.UPLOADED
                 video.uploaded_at = datetime.now()
                 session.commit()
                 print(f"Successfully uploaded {video.filename}.")
+            except Exception as e:
+                print(f"Upload failed for {video.filename}: {e}")
+                video.status = VideoStatus.FAILED
+                session.commit()
     finally:
         session.close()
 
