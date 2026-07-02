@@ -3,7 +3,7 @@ from instagrapi import Client
 
 def generate_session():
     USERNAME = "vinay_3ditz"
-    PASSWORD = "S!v3XypBZ8D8T*v"
+    PASSWORD = "instaupload"
     SESSION_FILE = "session.json"
     
     print(f"Logging in to Instagram as {USERNAME}...")
