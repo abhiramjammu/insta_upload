@@ -1,6 +1,15 @@
 import os
 from instagrapi import Client
 
+def challenge_code_handler(username, choice):
+    if choice == 1:
+        print("Instagram sent a code to your SMS/Phone.")
+        return input("Enter the 6-digit code: ")
+    elif choice == 2:
+        print("Instagram sent a code to your Email.")
+        return input("Enter the 6-digit code: ")
+    return input("Enter the verification code: ")
+
 def generate_session():
     USERNAME = "vinay_3ditz"
     PASSWORD = "instaupload"
@@ -8,6 +17,7 @@ def generate_session():
     
     print(f"Logging in to Instagram as {USERNAME}...")
     cl = Client()
+    cl.challenge_code_handler = challenge_code_handler
     
     try:
         cl.login(USERNAME, PASSWORD)
